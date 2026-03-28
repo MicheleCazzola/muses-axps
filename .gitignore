@@ -208,6 +208,7 @@ __marimo__/
 
 # Data
 data/
+!src/data/
 
 # Playground
 playground/
@@ -226,4 +227,4 @@ playground.ipynb
 
 # Temp
 temp/
-eval_temp/
+run_results/
