@@ -5,9 +5,11 @@
 ## Overview
 This repository contains the code developed to participate in the **MUSES Adverse-to-eXtreme Panoptic Segmentation (AXPS)** challenge, whose task is to perform panoptic segmentation in adverse illumination and weather conditions leveraging multi-modal data. The competition focuses on the [MUSES dataset](https://github.com/timbroed/MUSES), which contains images, LiDAR, radar and event modalities.
 
-The proposed approach integrates visual and LiDAR features in a lightweight fashion, using an efficient multi-scale mid-fusion module. Despite not achieving the SOTA performance of other works, this approach allows brings a modest improvement in panoptic quality using few more parameters and with a minimal latency overhead compared to the corresponding RGB-only model. It also provides better performance than a naive early fusion approach.
+The proposed approach integrates visual and LiDAR features in a lightweight fashion, using an efficient **multi-scale**, **mid-fusion** module. Despite not achieving the SOTA performance of other works, this approach brings a modest improvement in panoptic quality (PQ) using few more parameters and with a minimal latency overhead compared to the corresponding RGB-only Mask2Former model. It also provides better performance than a naive early fusion approach.
 
-This work achieved the **second** place in the challenge and scores 51.66% PQ on the [MUSES panoptic segmentation benchmark](https://www.codabench.org/competitions/13987/).
+This work achieved the **second** place in the challenge and scores 51.7% PQ on the [MUSES panoptic segmentation benchmark](https://www.codabench.org/competitions/13987/).
+
+For more details on the methodology and more insights on the results, you can read the report [here](./report.pdf).
 
 ## Installation
 This work is developed using:
@@ -18,11 +20,15 @@ This work is developed using:
 
 To install the required packages, run:
 
-`pip install -r requirements.txt`
+```
+pip install -r requirements.txt
+```
 
 The evaluation is performed using the [COCO Panoptic API](https://github.com/cocodataset/panopticapi). To install this API, run:
 
-`pip install git+https://github.com/cocodataset/panopticapi.git`
+```
+pip install git+https://github.com/cocodataset/panopticapi.git
+```
 
 ## Results
 The following table summarizes the results on the MUSES `validation` set of the three main approaches:
