@@ -228,3 +228,6 @@ playground.ipynb
 # Temp
 temp/
 run_results/
+
+# Results folder
+results/
