@@ -1,26 +1,9 @@
 import argparse
+import os
+import yaml
 
 import torch
 from enum import Enum
-
-from src.config import DEVICE, NUM_EPOCHS
-from src.data.dataloaders import get_dataloaders
-
-# ----------------------------------------------------------
-# CATEGORY MAPPING (MUSES IDs -> contiguous labels)
-# ----------------------------------------------------------
-
-train_loader, val_loader, test_loader = get_dataloaders()
-train_dataset = train_loader.dataset
-
-# Create mapping from MUSES category IDs to contiguous label indices for training and evaluation
-dataset_categories = sorted(train_dataset.categories, key=lambda c: c["id"])
-stuff_classes_ids = [i for i, c in enumerate(dataset_categories) if c["isthing"] == 0]
-id2index = {c["id"]: i for i, c in enumerate(dataset_categories)}
-index2id = {i: c["id"] for i, c in enumerate(dataset_categories)}
-
-# Number of classes for panoptic segmentation (including "stuff" and "thing" classes)
-num_classes = len(dataset_categories)
 
 # Type of task to perform (training, validation, testing or resource measurement)
 class TaskType(str, Enum):
@@ -39,40 +22,62 @@ def id2rgb(mask):
 
     
 # Get optimizer and scheduler for training depending on the specified LiDAR fusion method
-def get_training_optim(model, lidar_mid=False, lidar_early=False):
+def get_training_optim(cfg_folder, model, lidar_mid=False, lidar_early=False):
     
     assert not (lidar_mid and lidar_early), "Cannot use both LiDAR mid-fusion and LiDAR early fusion at the same time"
     
-    if lidar_mid:     # LiDAR mid-fusion
-        optimizer = torch.optim.AdamW(
-            [
-                {"params": model.model.parameters(), "lr": 1e-5, "weight_decay": 0.01},
-                {"params": model.lidar_encoder.parameters(), "lr": 5e-4, "weight_decay": 0.001},
-                {"params": model.fusion.parameters(), "lr": 5e-4, "weight_decay": 0.001}
+    match (lidar_mid, lidar_early):
+        # LiDAR mid-fusion
+        case (True, False):     
+            with open(os.path.join(cfg_folder, "mid_fusion.yaml"), "r") as f:
+                cfg = yaml.safe_load(f)
+                
+            learning_rates, weight_decays = map(lambda x: list(cfg[x].values()), ["learning_rate", "weight_decay"])
+            model_groups = [
+                model.model.parameters(),
+                model.lidar_encoder.parameters(),
+                model.fusion.parameters()
             ]
-        )
-    elif lidar_early:       # LiDAR early fusion
-        projector_params = list(model.model.model.pixel_level_module.encoder.embeddings.patch_embeddings.projection.parameters())
-        other_params = [p for n, p in model.named_parameters() if "model.pixel_level_module.encoder.embeddings.patch_embeddings.projection" not in n]
+            param_groups = [
+                {"params": params, "lr": lr, "weight_decay": wd}
+                for params, lr, wd in zip(model_groups, learning_rates, weight_decays)
+            ]
+            t_max = cfg["t_max"]
+            
+        # LiDAR early fusion
+        case (False, True):    
+            with open(os.path.join(cfg_folder, "early_fusion.yaml"), "r") as f:
+                cfg = yaml.safe_load(f)
+                
+            learning_rates, weight_decays = map(lambda x: list(cfg[x].values()), ["learning_rate", "weight_decay"])
+            projector_params = list(model.model.model.pixel_level_module.encoder.embeddings.patch_embeddings.projection.parameters())
+            other_params = [p for n, p in model.named_parameters() if "model.pixel_level_module.encoder.embeddings.patch_embeddings.projection" not in n]
+            param_groups = [
+                {"params": other_params, "lr": learning_rates[0], "weight_decay": weight_decays[0]},
+                {"params": projector_params, "lr": learning_rates[1], "weight_decay": weight_decays[1]}
+            ]
+            t_max = cfg["t_max"]
+            
+        # Standard RGB-only model
+        case (False, False):   
+            with open(os.path.join(cfg_folder, "rgb.yaml"), "r") as f:
+                cfg = yaml.safe_load(f)
+                
+            learning_rate, weight_decay = map(cfg.get, ["learning_rate", "weight_decay"])
+            param_groups = [{"params": model.parameters(), "lr": learning_rate, "weight_decay": weight_decay}]
+            t_max = cfg["t_max"]
+            
+        # Invalid combination
+        case _:                
+            raise ValueError("Invalid combination of LiDAR fusion options")
         
-        optimizer = torch.optim.AdamW(
-            [
-                {"params": other_params, "lr": 1e-5, "weight_decay": 0.01},
-                {"params": projector_params, "lr": 5e-4, "weight_decay": 0.001}
-            ]
-        )
-    else:       # Standard RGB-only model
-        optimizer = torch.optim.AdamW(
-            model.parameters(),
-            lr=5e-5,
-            weight_decay=0.01
-        )
+    print(param_groups)
     
-    # Using a cosine annealing scheduler
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer,
-        T_max=20,
-    )
+    # AdamW optimizer
+    optimizer = torch.optim.AdamW(param_groups)
+    
+    # Cosine annealing scheduler
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=t_max)
     
     return {
         "optimizer": optimizer,
@@ -81,20 +86,25 @@ def get_training_optim(model, lidar_mid=False, lidar_early=False):
     
     
 # Get args from command line for training and evaluation setup
-def get_args():
+def get_args(base_cfg):
+    
+    pretrained_model, output_dir = map(base_cfg.get, ["pretrained_model", "output_dir"])
+    backbone = base_cfg["backbone"]
+    resize_model = tuple(map(base_cfg["resize_model"].get, ["width", "height"]))
+    num_epochs, batch_size = map(base_cfg.get, ["num_epochs", "batch_size"])
+    
     parser = argparse.ArgumentParser(description="Panoptic segmentation with Mask2Former and LiDAR fusion")
     
     parser.add_argument("--mode", type=TaskType, choices=list(TaskType), required=True, help="Mode to run: train, valid, test or measure")
-    parser.add_argument("--backbone", type=str, default="tiny", choices=["tiny", "small", "base"], help="Backbone size for Mask2Former")
-    parser.add_argument("--resize", type=int, nargs=2, default=(1080, 1920), help="Image size (height width) to resize to during training and evaluation")
-    parser.add_argument("--batch_size", type=int, default=2, help="Batch size for training and evaluation")
-    parser.add_argument("--num_epochs", type=int, default=NUM_EPOCHS, help="Number of epochs for training (overrides default)")
-    parser.add_argument("--lidar_mid", action="store_true", help="Whether to use LiDAR mid-fusion architecture")
-    parser.add_argument("--lidar_early", action="store_true", help="Whether to use LiDAR early fusion architecture")
-    parser.add_argument("--pretrained_path", type=str, default=None, help="Path to pretrained model checkpoint for evaluation or fine-tuning")
-    parser.add_argument("--device", type=str, default=DEVICE, help="Device to run on (e.g. 'cuda', 'mps', 'cpu')")
-    parser.add_argument("--output_dir", type=str, default="./run_results", help="Directory to save panoptic segmentation results (predicted masks and JSON annotations)")
-    parser.add_argument("--reduce_factor", type=int, default=1, help="Factor to reduce the dataset size for faster experimentation")
+    parser.add_argument("--backbone", type=str, default=backbone, choices=["tiny", "small", "base"], help="Backbone size for Mask2Former")
+    parser.add_argument("--resize", type=int, nargs=2, default=resize_model, help="Image size (height width) to resize to during training and evaluation")
+    parser.add_argument("--batch-size", type=int, default=batch_size, help="Batch size for training and evaluation")
+    parser.add_argument("--num-epochs", type=int, default=num_epochs, help="Number of epochs for training (overrides default)")
+    parser.add_argument("--lidar-mid", action="store_true", help="Whether to use LiDAR mid-fusion architecture")
+    parser.add_argument("--lidar-early", action="store_true", help="Whether to use LiDAR early fusion architecture")
+    parser.add_argument("--pretrained-path", type=str, default=pretrained_model, help="Path to pretrained model checkpoint for evaluation or fine-tuning")
+    parser.add_argument("--output-dir", type=str, default=output_dir, help="Directory to save panoptic segmentation results (predicted masks and JSON annotations)")
+    parser.add_argument("--reduce-factor", type=int, default=1, help="Factor to reduce the dataset size for faster experimentation")
     args = parser.parse_args()
     
     return args

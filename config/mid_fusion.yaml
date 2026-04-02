@@ -1,0 +1,9 @@
+learning_rate:
+  pretrained: 1.e-5
+  lidar_encoder: 5.e-4
+  fusion: 5.e-4
+weight_decay:
+  pretrained: 0.01
+  lidar_encoder: 0.001
+  fusion: 0.001
+t_max: 20

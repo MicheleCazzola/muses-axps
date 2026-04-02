@@ -3,12 +3,7 @@ from torch.utils.data import DataLoader
 
 import albumentations as A
 
-# ==========================================================
-# DATASET
-# ==========================================================
-
 from src.data.dataset import MUSESPanopticDataset
-from src.config import DATA_ROOT, RESIZE_MODEL, BATCH_SIZE, NUM_WORKERS
 from src.utils.setup import set_reproducibility
 
 g, worker_init_fn = set_reproducibility()
@@ -22,7 +17,7 @@ def collate_fn(batch):
     return torch.stack(images), targets
 
 def define_transforms(splits, resize):
-    resize_transform = A.Resize(height=resize[0], width=resize[1])
+    resize_transform = A.Resize(height=resize[1], width=resize[0])
     
     train_transform = A.Compose(
         [resize_transform], 
@@ -49,20 +44,20 @@ def make_dataset(data_root, split, transform, use_lidar, reduce_factor):
     )
     return dataset
 
-def make_dataloader(dataset, batch_size, shuffle, drop_last):
+def make_dataloader(dataset, batch_size, shuffle, drop_last, num_workers):
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         drop_last=drop_last,
-        num_workers=NUM_WORKERS,
+        num_workers=num_workers,
         worker_init_fn=worker_init_fn,
         generator=g,
         collate_fn=collate_fn,
     )
     return dataloader
 
-def get_dataloaders(data_root=DATA_ROOT, batch_size=BATCH_SIZE, resize=RESIZE_MODEL, reduce_factor=None, lidar=False):
+def get_dataloaders(data_root, batch_size, resize, num_workers, reduce_factor=None, lidar=False):
     
     splits = ["train", "val", "test"]
 
@@ -102,10 +97,31 @@ def get_dataloaders(data_root=DATA_ROOT, batch_size=BATCH_SIZE, resize=RESIZE_MO
             dataset=datasets[split],
             batch_size=batch_sizes[split],
             shuffle=shuffle[split],
-            drop_last=drop_last[split]
+            drop_last=drop_last[split],
+            num_workers=num_workers
         ) for split in splits
     }
     
     train_loader, val_loader, test_loader = map(dataloaders.get, splits)
+    
+    # ==========================================================
+    # DATASET INFO
+    # ==========================================================
+    
+    # Create mapping from MUSES category IDs to contiguous label indices for training and evaluation
+    dataset_categories = sorted(datasets["train"].categories, key=lambda c: c["id"])
+    stuff_classes_ids = [i for i, c in enumerate(dataset_categories) if c["isthing"] == 0]
+    id2index = {c["id"]: i for i, c in enumerate(dataset_categories)}
+    index2id = {i: c["id"] for i, c in enumerate(dataset_categories)}
 
-    return train_loader, val_loader, test_loader
+    # Number of classes for panoptic segmentation (including "stuff" and "thing" classes)
+    num_classes = len(dataset_categories)
+    
+    data_info = {
+        "num_classes": num_classes,
+        "stuff_classes_ids": stuff_classes_ids,
+        "id2index": id2index,
+        "index2id": index2id
+    }
+
+    return train_loader, val_loader, test_loader, data_info

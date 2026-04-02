@@ -1,0 +1,3 @@
+learning_rate: 5.e-5
+weight_decay: 0.01
+t_max: 20

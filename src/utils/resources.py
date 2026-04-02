@@ -165,7 +165,7 @@ def compute_resource_consumption(model, lidar, img_size, batch_size, device="mps
     Parameters:
         :model: the model to compute resource consumption for
         :lidar: whether the model uses LiDAR data
-        :img_size: tuple representing the image size (H, W)
+        :img_size: tuple representing the image size (W, H)
         :batch_size: size of the batch
         :device: device to perform the computation on ("cpu", "cuda", "mps")
         :num_runs: number of runs to average latency over
@@ -176,6 +176,7 @@ def compute_resource_consumption(model, lidar, img_size, batch_size, device="mps
     model.eval()
     model = model.to(device)
     
+    img_size = (img_size[1], img_size[0])  # Convert to (H, W) for input tensor shape
     input_img = torch.randn(batch_size, 3, *img_size).to(device)
     lidar_img = torch.randn(batch_size, 3, *img_size).to(device)
     lidar_mask = torch.ones(batch_size, 1, *img_size).to(device)

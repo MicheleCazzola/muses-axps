@@ -2,13 +2,11 @@ import torch
 from torch import nn
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 
-from src.config import DEVICE
-from src.utils.utils import num_classes
 from src.modeling.lidar_mid_fusion import Mask2FormerLidarMidFusion
 from src.modeling.lidar_early_fusion import Mask2FormerLidarEarlyFusion
 
 # Get model class depending on the specified fusion method
-def get_model(model_size="tiny", image_size=(1080, 1920), lidar_mid=False, lidar_early=False):
+def get_model(model_size, image_size, num_classes, device, lidar_mid=False, lidar_early=False):
     
     assert not (lidar_mid and lidar_early), "Cannot use both LiDAR mid-fusion and LiDAR early fusion at the same time"
     
@@ -23,7 +21,7 @@ def get_model(model_size="tiny", image_size=(1080, 1920), lidar_mid=False, lidar
         do_rescale=True,
         do_normalize=True,
         do_resize=True,
-        size=image_size,
+        size={"height": image_size[1], "width": image_size[0]},
     )
     
     # Load standard Mask2Former model pretrained on Cityscapes panoptic segmentation
@@ -49,12 +47,12 @@ def get_model(model_size="tiny", image_size=(1080, 1920), lidar_mid=False, lidar
     else:
         print("Loading standard RGB-only model")
 
-    model = model.to(DEVICE)
+    model = model.to(device)
         
     return model, image_processor
 
 # Load pretrained model checkpoint, optionally loading optimizer and scheduler states as well for training resumption
-def load_chp(checkpoint_path: str, model: nn.Module, optimizer: torch.optim.Optimizer=None, scheduler:torch.optim.lr_scheduler.LRScheduler=None, device=DEVICE, sd_only=False):
+def load_chp(checkpoint_path: str, model: nn.Module, device: str, optimizer: torch.optim.Optimizer=None, scheduler:torch.optim.lr_scheduler.LRScheduler=None, sd_only=False):
     
     # Load checkpoint and model state dict
     chp = torch.load(checkpoint_path, map_location=device, weights_only=False)

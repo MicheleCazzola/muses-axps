@@ -1,0 +1,13 @@
+data_root: ./data/muses
+pretrained_model: null
+output_dir: ./run_results
+base_size:
+  width: 1920
+  height: 1080
+resize_model:
+  width: 1024
+  height: 512
+backbone: tiny
+num_epochs: 15
+batch_size: 2
+num_workers: 2

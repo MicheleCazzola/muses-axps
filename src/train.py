@@ -6,12 +6,11 @@ import numpy as np
 from panopticapi.evaluation import pq_compute
 
 from src.modeling.utils import save_chp
-from src.utils.utils import id2index, stuff_classes_ids, index2id
 from src.evaluate import evaluate, generate_submission, save_submission
 
     
 # Helper function to preprocess the panoptic segmentation targets into the format required for Mask2Former training
-def preprocess_targets(targets):
+def preprocess_targets(targets, id2index):
     masks, classes = [], []
     for tgt in targets:
         panoptic_mask, segment_info = tgt["mask"], tgt["segments_info"]
@@ -33,7 +32,7 @@ def preprocess_targets(targets):
     
     return masks, classes
 
-def validate(model, image_processor, dataloader, size, device, lidar):
+def validate(model, image_processor, dataloader, size, device, lidar, stuff_classes_ids, index2id):
     
     pred_folder, file_name = "./temp/panoptic", "panoptic"
     
@@ -58,7 +57,7 @@ def validate(model, image_processor, dataloader, size, device, lidar):
 
 def train(
     model, image_processor, train_loader, val_loader, optimizer, scheduler,
-    num_epochs, size, device, lidar, out_folder, log_frequency
+    num_epochs, size, device, lidar, out_folder, stuff_classes_ids, index2id, id2index, log_frequency=5
 ):
     
     out_folder_panoptic = os.path.join(out_folder, "panoptic_valid")
@@ -79,7 +78,7 @@ def train(
             
             # Preprocess images and targets
             processed_images = image_processor(images=images, return_tensors="pt", device=device)
-            masks, classes = preprocess_targets(targets)
+            masks, classes = preprocess_targets(targets, id2index)
             
             inputs = {
                 "pixel_values": processed_images["pixel_values"].to(device),
@@ -119,7 +118,7 @@ def train(
         train_losses.append(epoch_loss)
         
         # Validation 
-        valid_result, pq_result = validate(model, image_processor, val_loader, size, device, lidar)
+        valid_result, pq_result = validate(model, image_processor, val_loader, size, device, lidar, stuff_classes_ids, index2id)
         pq_results.append(pq_result)
         
         # Save best checkpoint based on PQ metric
