@@ -30,8 +30,32 @@ The evaluation is performed using the [COCO Panoptic API](https://github.com/coc
 pip install git+https://github.com/cocodataset/panopticapi.git
 ```
 
+To download the dataset, please follow the instructions provided in the [MUSES repository](https://github.com/timbroed/MUSES). The models can be downloaded from Google Drive, as described [here](#models). 
+
+Once the setup is finished, the project repository should have the following structure:
+
+```
+<repo_name>
+  ├── <path/to/muses>           <- MUSES dataset
+  ├── <path/to/models>          <- Models .pth files
+  ├── config/                   <- Configuration files
+  ├── src/                      
+      ├── data/                 <- Dataset definition and data handling
+      ├── modeling/             <- Definitions of the models
+      ├── utils/                <- Auxiliary functions
+      ├── evaluate.py           <- Evaluation
+      ├── train.py              <- Training (including per-epoch validation)
+  ├── main.py                   <- Entry point
+  ├── [other files]
+```
+
 ## Models
-The weights of the models are available at this [Drive](https://drive.google.com/drive/folders/1A3qd2bX1rUMAWbNIb-wsqr7NJNYBEooe?usp=sharing).
+The weights of the models are available on [Google Drive](https://drive.google.com/drive/folders/1A3qd2bX1rUMAWbNIb-wsqr7NJNYBEooe?usp=sharing). They are:
+- `mask2former_lidar_mid_fusion.pth`: mid-fusion model
+- `mask2former_lidar_early_fusion.pth`: early fusion baseline
+- `mask2former.pth`: RGB-only Mask2Former baseline
+
+All the models are finetuned only on the MUSES dataset.
 
 ## Results
 The following table summarizes the results on the MUSES `validation` set of the three main approaches:
@@ -59,6 +83,37 @@ Here is a detailed view of the PQ performance of the **mid-fusion** approach for
 |**Day**|54.1|52.8|50.9|45.5|*52.2*|
 |**Night**|50.2|41.9|49.0|48.1|*49.4*|
 |**All**|*53.3*|*50.6*|*51.1*|*49.0*|***51.7***|
+
+## Run
+
+To evaluate the mid-fusion model on the `test` set, you can use the following command:
+
+```
+python main.py \
+    --mode test \
+    --lidar-mid \
+    --pretrained-path <path/to/models>/mask2former_lidar_mid_fusion.pth \
+    --output-dir <path/to/output>
+```
+
+To evaluate one of the baselines, it is sufficient to change the name of the `.pth` file. Use the flag `--lidar-early` for the early fusion baseline. No flag is necessary for the RGB-only model.
+
+To train the mid-fusion model, you can run:
+
+```
+python main.py \
+    --mode train \
+    --lidar-mid \
+    --output-dir <path/to/output>
+```
+
+The other models can be trained using a different flag than `--lidar-mid`, as described for the evaluation.
+
+If `--output-dir` is not specified, the results will be automatically saved in `./run_results`. A more fine-grained choice of the run parameters can be made, by modifying the configuration files ([here](./config/)) or by indicating the specific values at runtime. For an explanation of the possible run options, execute:
+
+```
+python main.py --help
+```
 
 
 ## Acknowledgements
