@@ -230,3 +230,6 @@ temp/
 
 # Results folders
 *results/*
+
+# Misc
+requirements_local.txt

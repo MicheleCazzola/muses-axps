@@ -1,6 +1,10 @@
 # Lightweight LiDAR fusion for Panoptic Segmentation in Adverse Conditions
 
+**Authors**: [Michele Cazzola](https://github.com/michelecazzola)
+
 :2nd_place_medal: **second** place at the [MUSES-AXPS](https://urvis-workshop.github.io/challenge-Muses.html) challenge (**URVIS** @ **CVPRW 2026**)
+
+:page_facing_up: Included in the [MUSES-AXPS Challenge paper](https://arxiv.org/abs/2604.16984) that will be presented at the [URVIS workshop](https://urvis-workshop.github.io/) (**CVPR 2026**).
 
 ## Overview
 This repository contains the code developed to participate in the **MUSES Adverse-to-eXtreme Panoptic Segmentation (AXPS)** challenge, whose task is to perform panoptic segmentation in adverse illumination and weather conditions leveraging multi-modal data. The competition focuses on the [MUSES dataset](https://github.com/timbroed/MUSES), which contains images, LiDAR, radar and event modalities.
