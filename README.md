@@ -13,7 +13,7 @@ The proposed approach integrates visual and LiDAR features in a lightweight fash
 
 This work achieved the **second** place at the challenge and scores 51.7% PQ on the [MUSES panoptic segmentation benchmark](https://www.codabench.org/competitions/13987/).
 
-For more details on the methodology and more insights on the results, you can read the report [here](./report.pdf).
+For more details on the methodology and more insights on the results, you can read the report [here](./paper.pdf).
 
 ## Installation
 This work is developed using:
