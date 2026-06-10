@@ -4,7 +4,7 @@
 
 :2nd_place_medal: **second** place at the [MUSES-AXPS](https://urvis-workshop.github.io/challenge-Muses.html) challenge (**URVIS** @ **CVPRW 2026**)
 
-:page_facing_up: Included in the [MUSES-AXPS Challenge paper](https://arxiv.org/abs/2604.16984) that will be presented at the [URVIS workshop](https://urvis-workshop.github.io/) (**CVPR 2026**).
+:page_facing_up: Included in the [MUSES-AXPS Challenge paper](https://openaccess.thecvf.com/content/CVPR2026W/URVIS/papers/Wang_Adverse-to-the-eXtreme_Panoptic_Segmentation_URVIS_2026_Study_and_Benchmark_CVPRW_2026_paper.pdf) presented at the [URVIS workshop](https://urvis-workshop.github.io/) (**CVPR 2026**).
 
 ## Overview
 This repository contains the code developed to participate in the **MUSES Adverse-to-eXtreme Panoptic Segmentation (AXPS)** challenge, whose task is to perform panoptic segmentation in adverse illumination and weather conditions leveraging multi-modal data. The competition focuses on the [MUSES dataset](https://github.com/timbroed/MUSES), which contains images, LiDAR, radar and event modalities.
@@ -13,7 +13,7 @@ The proposed approach integrates visual and LiDAR features in a lightweight fash
 
 This work achieved the **second** place at the challenge and scores 51.7% PQ on the [MUSES panoptic segmentation benchmark](https://www.codabench.org/competitions/13987/).
 
-For more details on the methodology and more insights on the results, you can read the report [here](./paper.pdf).
+For more details on the methodology and more insights on the results, you can read the project paper [here](./paper.pdf).
 
 ## Installation
 This work is developed using:
